@@ -153,4 +153,7 @@ async def run_workflow(workflow_input: WorkflowInput):
         )
 
         # Return the agent's final output (should be JSON per instructions)
-        return json.loads(result.final_output_as(str))
+        raw = result.final_output_as(str)
+        print("CDD RAW OUTPUT repr:", repr(raw)[:800])  # TEMP: inspect raw output
+        raise RuntimeError(f"RAW_FINAL_OUTPUT_REPR={raw!r}")
+        return json.loads(raw)
