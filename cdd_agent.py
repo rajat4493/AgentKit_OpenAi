@@ -1,5 +1,7 @@
-import os
 import json
+import os
+
+import app
 import httpx
 from pydantic import BaseModel
 from agents import (
@@ -12,7 +14,6 @@ from agents import (
     RunConfig,
     trace,
 )
-
 # ---- Tool: Create case (calls your local case-service stub) ----
 CASE_SERVICE_URL = os.getenv("CASE_SERVICE_URL", "http://127.0.0.1:5056/create-case")
 
@@ -132,6 +133,7 @@ Please request these documents from the customer and update the case once receiv
 class WorkflowInput(BaseModel):
     input_as_text: str
 
+
 async def run_workflow(workflow_input: WorkflowInput):
     with trace("CDD"):
         conversation_history: list[TResponseInputItem] = [
@@ -141,19 +143,16 @@ async def run_workflow(workflow_input: WorkflowInput):
             }
         ]
 
+        trace_metadata = {
+            "__trace_source__": "local-api",
+            "workflow_id": "wf_69414bd0461c81908fda94ed7cb38a420fd79b5725e6aab4",
+        }
+
         result = await Runner.run(
             cddagent,
             input=conversation_history,
-            run_config=RunConfig(
-                trace_metadata={
-                    "__trace_source__": "local-api",
-                    "workflow_id": "wf_69414bd0461c81908fda94ed7cb38a420fd79b5725e6aab4",
-                }
-            ),
+            run_config=RunConfig(trace_metadata=trace_metadata),
         )
 
-        # Return the agent's final output (should be JSON per instructions)
         raw = result.final_output_as(str)
-        print("CDD RAW OUTPUT repr:", repr(raw)[:800])  # TEMP: inspect raw output
-        raise RuntimeError(f"RAW_FINAL_OUTPUT_REPR={raw!r}")
         return json.loads(raw)

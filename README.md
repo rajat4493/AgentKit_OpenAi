@@ -207,7 +207,7 @@ Human override capability
     "SOURCE_OF_FUNDS",
     "PEP_STATUS"
   ],
-  "summary": "Customer 2022 has incomplete CDD data. No transaction alerts present.",
+ "summary": "Customer 2022 has incomplete CDD data. No transaction alerts present.",
   "action_note": "Evidence requested via Slack. Await documents before opening a case."
 }
 
@@ -242,3 +242,43 @@ Multi-jurisdiction policy tuning
 13. One-Line Summary
 
 This system demonstrates a true agentic CDD workflow, where an AI agent owns risk decisions and selectively triggers human and system actions, rather than executing a predefined automation script.
+
+14. Running the CDD Agent
+
+1. **Prepare your environment.** Use Python 3.10+ and create a virtual environment so you can install dependencies without polluting the system interpreter.
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   python3 -m pip install --upgrade pip
+   python3 -m pip install fastapi httpx uvicorn pydantic agents
+   python3 -m pip install setuptools-distutils
+   ```
+
+   Replace `agents` above with whatever locally published package provides the `agents.Agent`, `Runner`, and `function_tool` abstractions that `cdd_agent.py` imports.
+
+2. **Set the required secrets.** The FastAPI service exposes `/create-case` and forwards Zendesk calls, so export the Zendesk credentials that route needs. Slack is only required if the agent ever needs to request missing evidence.
+
+   ```bash
+   export ZENDESK_SUBDOMAIN=your-subdomain
+   export ZENDESK_EMAIL=your-email@example.com
+   export ZENDESK_API_TOKEN=token
+   export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+   export CASE_SERVICE_URL=http://127.0.0.1:5056/create-case
+   ```
+
+3. **Launch the FastAPI app.** Run the server on the port that `CASE_SERVICE_URL` points to so that the agent can call `/create-case` through the same service in-process.
+
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 5056 --reload
+   ```
+
+4. **Trigger the agent.** Call the `/run-cdd` endpoint with a customer ID to start the workflow. The endpoint creates the conversation, runs `Runner.run`, and returns the agent’s structured JSON output (or raises an error if execution fails).
+
+   ```bash
+   curl -X POST http://127.0.0.1:5056/run-cdd \
+     -H "Content-Type: application/json" \
+     -d '{"customer_id":"2022"}'
+   ```
+
+5. **Understand the helpers.** `/create-case` is idempotent and proxies agent-created Zendesk tickets. Keeping the FastAPI server and the agent in the same process ensures the `create_case` tool can hit the local endpoint (`CASE_SERVICE_URL`) without any extra work.

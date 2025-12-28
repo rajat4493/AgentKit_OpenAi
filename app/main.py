@@ -1,12 +1,27 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from cdd_agent import run_workflow, WorkflowInput
+from lattice.adapters import enable_agentkit
 import os
 import base64
 import httpx
+####temp
+import inspect
+from agents import Runner
+import sys, inspect
+import lattice
+from lattice.adapters import enable_agents
+from agents import Runner
+import agents.run as agents_run
+#######
 
 CASE_REGISTRY = {}
 app = FastAPI()
+
+
+@app.on_event("startup")
+def _lattice_setup():
+    enable_agents(app_name="cdd-agent-api")
 
 ZENDESK_SUBDOMAIN = os.getenv("ZENDESK_SUBDOMAIN")
 ZENDESK_EMAIL = os.getenv("ZENDESK_EMAIL")
